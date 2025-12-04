@@ -17,6 +17,7 @@ class AppIcons:
     # Navigation Icons
     dashboard = ft.CupertinoIcons.SQUARE_GRID_2X2 if _is_macos else ft.Icons.DASHBOARD
     settings = ft.CupertinoIcons.GEAR if _is_macos else ft.Icons.SETTINGS
+    logs = ft.CupertinoIcons.DOC_TEXT if _is_macos else ft.Icons.TEXT_SNIPPET
     
     # Action Icons
     add = ft.CupertinoIcons.ADD if _is_macos else ft.Icons.ADD

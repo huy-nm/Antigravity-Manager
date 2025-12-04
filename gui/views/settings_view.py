@@ -2,6 +2,7 @@ import flet as ft
 import sys
 import os
 import platform
+import subprocess
 from pathlib import Path
 from theme import get_palette
 from icons import AppIcons
@@ -10,9 +11,10 @@ RADIUS_CARD = 12
 PADDING_PAGE = 20
 
 class SettingsView(ft.Container):
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, app_state):
         super().__init__()
-        self.page = page
+        self.main_page = page
+        self.app_state = app_state
         self.expand = True
         self.padding = PADDING_PAGE
         
@@ -20,49 +22,48 @@ class SettingsView(ft.Container):
         self.palette = get_palette(page)
         self.bgcolor = self.palette.bg_page
         
-        self.log_view = ft.ListView(
-            expand=True,
-            spacing=5,
-            padding=10,
-            auto_scroll=True,
-        )
-        
-        # Redirect stdout to capture logs
-        self.original_stdout = sys.stdout
-        sys.stdout = self.LogRedirector(self.log_view)
-        
         self.build_ui()
 
     def did_mount(self):
         pass
 
     def will_unmount(self):
-        # Keep stdout redirected so we capture logs even when not on this view
         pass
 
     def update_theme(self):
-        self.palette = get_palette(self.page)
+        self.palette = get_palette(self.main_page)
         self.bgcolor = self.palette.bg_page
-        self.build_ui() # Rebuild UI to update colors
-        self.update()
+        self.rebuild_ui() 
+        if self.page:
+            self.update()
+
+    def update_locale(self):
+        self.rebuild_ui()
+        if self.page:
+            self.update()
 
     def build_ui(self):
+        # Just wrapper
+        self.rebuild_ui()
+
+    def rebuild_ui(self):
         self.content = ft.Column(
             [
-                ft.Text("设置", size=28, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
+                ft.Text(self.app_state.get_text("settings"), size=28, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
                 ft.Container(height=20),
                 
-                # Top Row: Data Management + About (side by side)
-                ft.Row(
-                    [
-                        # Data Management Section
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text("数据管理", size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
-                                    ft.Container(height=10),
-                                    ft.Container(
-                                        content=ft.Column(
+                # Full width cards for better layout
+                
+                # 1. Data Management
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text(self.app_state.get_text("data_management"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
+                            ft.Container(height=10),
+                            ft.Container(
+                                content=ft.Column(
+                                    [
+                                        ft.Row(
                                             [
                                                 ft.Row(
                                                     [
@@ -74,8 +75,8 @@ class SettingsView(ft.Container):
                                                         ),
                                                         ft.Column(
                                                             [
-                                                                ft.Text("本地数据目录", size=15, weight=ft.FontWeight.W_600, color=self.palette.text_main),
-                                                                ft.Text("查看备份文件和数据库", size=12, color=self.palette.text_grey),
+                                                                ft.Text(self.app_state.get_text("local_data_dir"), size=15, weight=ft.FontWeight.W_600, color=self.palette.text_main),
+                                                                ft.Text(self.app_state.get_text("view_files"), size=12, color=self.palette.text_grey),
                                                             ],
                                                             spacing=2,
                                                             alignment=ft.MainAxisAlignment.CENTER
@@ -83,9 +84,8 @@ class SettingsView(ft.Container):
                                                     ],
                                                     spacing=15
                                                 ),
-                                                ft.Container(height=20),
                                                 ft.Container(
-                                                    content=ft.Text("打开文件夹", size=13, color=self.palette.primary, weight=ft.FontWeight.BOLD),
+                                                    content=ft.Text(self.app_state.get_text("open_folder"), size=13, color=self.palette.primary, weight=ft.FontWeight.BOLD),
                                                     padding=ft.padding.symmetric(horizontal=20, vertical=10),
                                                     border_radius=8,
                                                     bgcolor=self.palette.bg_light_blue,
@@ -93,103 +93,88 @@ class SettingsView(ft.Container):
                                                     alignment=ft.alignment.center
                                                 ),
                                             ],
-                                            spacing=0,
                                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN
                                         ),
-                                        padding=20,
-                                        bgcolor=self.palette.bg_card,
-                                        border_radius=RADIUS_CARD,
-                                        height=170,
-                                        shadow=ft.BoxShadow(
-                                            spread_radius=0,
-                                            blur_radius=10,
-                                            color=self.palette.shadow,
-                                            offset=ft.Offset(0, 4),
-                                        ),
-                                    ),
-                                ],
-                                spacing=0
+                                    ],
+                                    spacing=0,
+                                ),
+                                padding=20,
+                                bgcolor=self.palette.bg_card,
+                                border_radius=RADIUS_CARD,
+                                shadow=ft.BoxShadow(
+                                    spread_radius=0,
+                                    blur_radius=10,
+                                    color=self.palette.shadow,
+                                    offset=ft.Offset(0, 4),
+                                ),
                             ),
-                            expand=True
-                        ),
-                        
-                        # About Section
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text("关于", size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
-                                    ft.Container(height=10),
-                                    ft.Container(
-                                        content=ft.Column(
-                                            [
-                                                ft.Row(
-                                                    [
-                                                        ft.Icon(ft.Icons.INFO_OUTLINE, size=20, color=self.palette.primary),
-                                                        ft.Text("Antigravity Manager", size=15, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
-                                                    ],
-                                                    spacing=10
-                                                ),
-                                                ft.Container(height=15),
-                                                ft.Row(
-                                                    [
-                                                        ft.Text("作者：", size=13, color=self.palette.text_grey, weight=ft.FontWeight.W_500),
-                                                        ft.Text("Ctrler", size=13, color=self.palette.text_main),
-                                                    ],
-                                                    spacing=5
-                                                ),
-                                                ft.Container(height=8),
-                                                ft.Row(
-                                                    [
-                                                        ft.Text("公众号：", size=13, color=self.palette.text_grey, weight=ft.FontWeight.W_500),
-                                                        ft.Text("Ctrler", size=13, color=self.palette.text_main),
-                                                    ],
-                                                    spacing=5
-                                                ),
-                                            ],
-                                            spacing=0,
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                                        ),
-                                        padding=20,
-                                        bgcolor=self.palette.bg_card,
-                                        border_radius=RADIUS_CARD,
-                                        height=170,
-                                        shadow=ft.BoxShadow(
-                                            spread_radius=0,
-                                            blur_radius=10,
-                                            color=self.palette.shadow,
-                                            offset=ft.Offset(0, 4),
-                                        ),
-                                    ),
-                                ],
-                                spacing=0
-                            ),
-                            expand=True
-                        ),
-                    ],
-                    spacing=15,
+                        ],
+                        spacing=0
+                    ),
+                    width=600
                 ),
                 
                 ft.Container(height=20),
                 
-                # Logs Section (takes up remaining space)
-                ft.Text("系统日志", size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
-                ft.Container(height=10),
+                # 2. About
                 ft.Container(
-                    content=self.log_view,
-                    bgcolor="#1E1E1E", # Console always dark
-                    border_radius=RADIUS_CARD,
-                    expand=True,  # This will take up all remaining vertical space
-                    padding=15,
-                    shadow=ft.BoxShadow(
-                        spread_radius=0,
-                        blur_radius=10,
-                        color=self.palette.shadow,
-                        offset=ft.Offset(0, 4),
-                    )
-                )
+                    content=ft.Column(
+                        [
+                            ft.Text(self.app_state.get_text("about"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
+                            ft.Container(height=10),
+                            ft.Container(
+                                content=ft.Column(
+                                    [
+                                        ft.Row(
+                                            [
+                                                ft.Icon(ft.Icons.INFO_OUTLINE, size=20, color=self.palette.primary),
+                                                ft.Text(self.app_state.get_text("app_title"), size=15, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
+                                            ],
+                                            spacing=10
+                                        ),
+                                        ft.Container(height=15),
+                                        ft.Row(
+                                            [
+                                                ft.Text(f"{self.app_state.get_text('author')}:", size=13, color=self.palette.text_grey, weight=ft.FontWeight.W_500),
+                                                ft.Text("Ctrler", size=13, color=self.palette.text_main),
+                                            ],
+                                            spacing=5
+                                        ),
+                                        ft.Container(height=8),
+                                        ft.Row(
+                                            [
+                                                ft.Text(f"{self.app_state.get_text('official_account')}:", size=13, color=self.palette.text_grey, weight=ft.FontWeight.W_500),
+                                                ft.Text("Ctrler", size=13, color=self.palette.text_main),
+                                            ],
+                                            spacing=5
+                                        ),
+                                    ],
+                                    spacing=0,
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                                ),
+                                padding=20,
+                                bgcolor=self.palette.bg_card,
+                                border_radius=RADIUS_CARD,
+                                shadow=ft.BoxShadow(
+                                    spread_radius=0,
+                                    blur_radius=10,
+                                    color=self.palette.shadow,
+                                    offset=ft.Offset(0, 4),
+                                ),
+                            ),
+                        ],
+                        spacing=0
+                    ),
+                    width=600
+                ),
             ],
-            horizontal_alignment=ft.CrossAxisAlignment.START
+            horizontal_alignment=ft.CrossAxisAlignment.START,
+            scroll=ft.ScrollMode.AUTO
         )
+
+    def on_language_change(self, e):
+        # Moved to Sidebar
+        pass
 
     def open_data_folder(self, e):
         path_to_open = os.path.expanduser("~/.antigravity-agent")
@@ -199,68 +184,11 @@ class SettingsView(ft.Container):
         path_to_open = os.path.normpath(path_to_open)
              
         if platform.system() == "Darwin":
-            os.system(f"open '{path_to_open}'")
+            subprocess.run(["open", path_to_open])
         elif platform.system() == "Windows":
             try:
                 os.startfile(path_to_open)
             except Exception as e:
                 print(f"Failed to open folder: {e}")
         else:
-            os.system(f"xdg-open '{path_to_open}'")
-
-    class LogRedirector:
-        def __init__(self, log_view):
-            self.log_view = log_view
-            self.terminal = sys.stdout
-
-        def write(self, message):
-            if self.terminal:
-                try:
-                    self.terminal.write(message)
-                except:
-                    pass
-            if not message.strip():
-                return
-                
-            # Simple ANSI color parsing
-            text_color = "#FFFFFF" # Default log color
-            clean_message = message.strip()
-            
-            if "\033[32m" in message: # Green (INFO)
-                text_color = "#34C759"
-                clean_message = clean_message.replace("\033[32m", "").replace("\033[0m", "")
-            elif "\033[33m" in message: # Yellow (WARN)
-                text_color = "#FFCC00"
-                clean_message = clean_message.replace("\033[33m", "").replace("\033[0m", "")
-            elif "\033[31m" in message: # Red (ERR)
-                text_color = "#FF3B30"
-                clean_message = clean_message.replace("\033[31m", "").replace("\033[0m", "")
-            elif "\033[90m" in message: # Grey (DEBUG)
-                text_color = "#8E8E93"
-                clean_message = clean_message.replace("\033[90m", "").replace("\033[0m", "")
-            
-            # Remove any remaining ANSI codes if simple parsing missed them
-            if "\033[" in clean_message:
-                import re
-                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-                clean_message = ansi_escape.sub('', clean_message)
-
-            self.log_view.controls.append(
-                ft.Text(
-                    clean_message, 
-                    font_family="Monaco, Menlo, Courier New, monospace", 
-                    size=12,
-                    color=text_color,
-                    selectable=True
-                )
-            )
-            
-            # Only try to update if the control is attached to a page
-            if self.log_view.page:
-                try:
-                    self.log_view.update()
-                except:
-                    pass
-
-        def flush(self):
-            self.terminal.flush()
+            subprocess.run(["xdg-open", path_to_open])

@@ -12,9 +12,10 @@ RADIUS_CARD = 12
 PADDING_PAGE = 20
 
 class HomeView(ft.Container):
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, app_state):
         super().__init__()
-        self.page = page
+        self.main_page = page
+        self.app_state = app_state
         self.expand = True
         self.padding = PADDING_PAGE
         
@@ -22,12 +23,64 @@ class HomeView(ft.Container):
         self.palette = get_palette(page)
         self.bgcolor = self.palette.bg_page
         
+        self.build_ui()
+        
+        # Accounts list
+        self.accounts_list = ft.Column(spacing=12, scroll=ft.ScrollMode.HIDDEN)
+        self.current_email = None
+        
+        # Start status monitoring
+        self.running = True
+
+    def did_mount(self):
+        self.running = True
+        self.rebuild_content() # Initial build
+        self.refresh_data()
+        self.monitor_thread = threading.Thread(target=self.monitor_status, daemon=True)
+        self.monitor_thread.start()
+        
+        # Automatically backup current account
+        self.auto_backup()
+
+    def auto_backup(self):
+        def task():
+            # Delay slightly to ensure UI is loaded
+            time.sleep(1)
+            if add_account_snapshot():
+                self.refresh_data()
+        threading.Thread(target=task, daemon=True).start()
+
+    def will_unmount(self):
+        self.running = False
+
+    def update_theme(self):
+        self.palette = get_palette(self.main_page)
+        self.bgcolor = self.palette.bg_page
+        self.rebuild_content()
+        self.refresh_data()
+        if self.page:
+            self.update()
+
+    def update_locale(self):
+        self.rebuild_content()
+        self.refresh_data()
+        if self.page:
+            self.update()
+
+    def build_ui(self):
+        # Just container init, actual content is built in rebuild_content to support dynamic updates
+        pass
+
+    def rebuild_content(self):
         # Status Bar Elements
+        self.status_bar_text = ft.Text(self.app_state.get_text("status_checking"), size=13, weight=ft.FontWeight.W_500, color=self.palette.primary)
+        self.status_bar_icon = ft.Icon(AppIcons.info, size=16, color=self.palette.primary)
+        
         self.status_bar = ft.Container(
             content=ft.Row(
                 [
-                    ft.Icon(AppIcons.info, size=16, color=self.palette.primary),
-                    ft.Text("正在检测状态...", size=13, weight=ft.FontWeight.W_500, color=self.palette.primary)
+                    self.status_bar_icon,
+                    self.status_bar_text
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER
@@ -40,56 +93,20 @@ class HomeView(ft.Container):
         )
         
         # List Header Elements
-        self.list_title = ft.Text("账号列表", size=18, weight=ft.FontWeight.BOLD, color=self.palette.text_main)
+        self.list_title = ft.Text(self.app_state.get_text("account_list"), size=18, weight=ft.FontWeight.BOLD, color=self.palette.text_main)
+        self.stats_badge_text = ft.Text("0", size=12, color=self.palette.primary, weight=ft.FontWeight.BOLD)
         self.stats_badge = ft.Container(
-            content=ft.Text("0", size=12, color=self.palette.primary, weight=ft.FontWeight.BOLD),
+            content=self.stats_badge_text,
             bgcolor=self.palette.bg_light_blue,
             padding=ft.padding.symmetric(horizontal=8, vertical=2),
             border_radius=10,
         )
         
-        # Accounts list
-        self.accounts_list = ft.Column(spacing=12, scroll=ft.ScrollMode.HIDDEN)
-        self.current_email = None
-        
-        # Start status monitoring
-        self.running = True
+        # Re-initialize accounts list container if needed, but keep reference if possible?
+        # Actually better to just clear it in refresh_data
+        if not hasattr(self, 'accounts_list'):
+            self.accounts_list = ft.Column(spacing=12, scroll=ft.ScrollMode.HIDDEN)
 
-    def did_mount(self):
-        self.running = True
-        self.build_ui()
-        self.refresh_data()
-        self.monitor_thread = threading.Thread(target=self.monitor_status, daemon=True)
-        self.monitor_thread.start()
-        
-        # 自动备份当前账号
-        self.auto_backup()
-
-    def auto_backup(self):
-        def task():
-            # 延迟一点时间，确保UI已加载
-            time.sleep(1)
-            if add_account_snapshot():
-                self.refresh_data()
-        threading.Thread(target=task, daemon=True).start()
-
-    def will_unmount(self):
-        self.running = False
-
-    def update_theme(self):
-        self.palette = get_palette(self.page)
-        self.bgcolor = self.palette.bg_page
-        
-        # Update static elements
-        self.list_title.color = self.palette.text_main
-        self.stats_badge.bgcolor = self.palette.bg_light_blue
-        self.stats_badge.content.color = self.palette.primary
-        
-        # Rebuild UI or refresh data to update list items
-        self.refresh_data()
-        self.update()
-
-    def build_ui(self):
         self.content = ft.Column(
             [
                 # 1. Status Notification Bar
@@ -112,7 +129,7 @@ class HomeView(ft.Container):
                             content=ft.Row(
                                 [
                                     ft.Icon(AppIcons.add, size=14, color="#FFFFFF"), # Always white on primary
-                                    ft.Text("备份当前", size=13, color="#FFFFFF", weight=ft.FontWeight.W_600)
+                                    ft.Text(self.app_state.get_text("backup_current"), size=13, color="#FFFFFF", weight=ft.FontWeight.W_600)
                                 ],
                                 spacing=4,
                                 alignment=ft.MainAxisAlignment.CENTER
@@ -154,7 +171,9 @@ class HomeView(ft.Container):
         accounts = list_accounts_data()
         
         # Update stats badge
-        self.stats_badge.content.value = f"{len(accounts)} 个备份"
+        # We need to handle pluralization if strict, but simple concatenation is fine here
+        # Or just use the count
+        self.stats_badge_text.value = f"{len(accounts)}"
         
         if not accounts:
             self.accounts_list.controls.append(
@@ -163,7 +182,7 @@ class HomeView(ft.Container):
                         [
                             ft.Icon(AppIcons.document, size=40, color=self.palette.text_grey),
                             ft.Container(height=10),
-                            ft.Text("暂无备份记录", color=self.palette.text_grey, size=14),
+                            ft.Text(self.app_state.get_text("no_backups"), color=self.palette.text_grey, size=14),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER
                     ),
@@ -177,11 +196,12 @@ class HomeView(ft.Container):
                 is_current = (acc.get('email') == self.current_email)
                 self.accounts_list.controls.append(self.create_account_row(acc, is_current))
         
-        self.update()
+        if self.page:
+            self.update()
 
     def format_last_used(self, iso_str):
         if not iso_str:
-            return "从未"
+            return self.app_state.get_text("never")
         try:
             dt = datetime.fromisoformat(iso_str)
             return dt.strftime("%Y-%m-%d %H:%M")
@@ -189,6 +209,17 @@ class HomeView(ft.Container):
             return str(iso_str).split('T')[0]
 
     def create_account_row(self, acc, is_current):
+        # Gradient effect for current account card
+        # Use a subtle gradient if current, else solid color
+        # Flet Container supports gradient
+        
+        bg_color = self.palette.bg_card
+        border = None
+        
+        if is_current:
+            # Highlight current account with a subtle border
+            border = ft.border.all(1, self.palette.primary)
+        
         return ft.Container(
             content=ft.Row(
                 [
@@ -220,7 +251,7 @@ class HomeView(ft.Container):
                                         [
                                             ft.Text(acc['name'], size=15, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
                                             ft.Container(
-                                                content=ft.Text("当前", size=10, color=self.palette.primary, weight=ft.FontWeight.BOLD),
+                                                content=ft.Text(self.app_state.get_text("current"), size=10, color=self.palette.primary, weight=ft.FontWeight.BOLD),
                                                 bgcolor=self.palette.bg_light_blue,
                                                 padding=ft.padding.symmetric(horizontal=6, vertical=2),
                                                 border_radius=4,
@@ -245,7 +276,7 @@ class HomeView(ft.Container):
                             ft.Column(
                                 [
                                     ft.Text(
-                                        "上次使用", 
+                                        self.app_state.get_text("last_used"), 
                                         size=10, 
                                         color=self.palette.text_grey,
                                         text_align=ft.TextAlign.RIGHT
@@ -261,21 +292,22 @@ class HomeView(ft.Container):
                                 alignment=ft.MainAxisAlignment.CENTER,
                                 horizontal_alignment=ft.CrossAxisAlignment.END
                             ),
-                            ft.PopupMenuButton(
-                                icon=AppIcons.ellipsis,
-                                icon_color=self.palette.text_grey,
-                                items=[
-                                    ft.PopupMenuItem(
-                                        text="切换到此账号", 
+                            ft.Row(
+                                [
+                                    ft.IconButton(
                                         icon=ft.Icons.SWAP_HORIZ,
+                                        icon_color=self.palette.primary,
+                                        tooltip=self.app_state.get_text("switch_to"),
                                         on_click=lambda e: self.switch_to_account(acc['id'])
                                     ),
-                                    ft.PopupMenuItem(
-                                        text="删除备份", 
-                                        icon=ft.Icons.DELETE_OUTLINE,
+                                    ft.IconButton(
+                                        icon=AppIcons.delete,
+                                        icon_color="#FF3B30",
+                                        tooltip=self.app_state.get_text("delete_backup"),
                                         on_click=lambda e: self.delete_acc(acc['id'])
                                     ),
-                                ]
+                                ],
+                                spacing=0
                             ),
                         ],
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -286,7 +318,8 @@ class HomeView(ft.Container):
                 vertical_alignment=ft.CrossAxisAlignment.CENTER
             ),
             padding=ft.padding.symmetric(horizontal=20, vertical=12),
-            bgcolor=self.palette.bg_card,
+            bgcolor=bg_color,
+            border=border,
             border_radius=RADIUS_CARD,
             shadow=ft.BoxShadow(
                 spread_radius=0,
@@ -310,24 +343,22 @@ class HomeView(ft.Container):
             is_running = is_process_running()
             
             # Update Status Bar
-            content_row = self.status_bar.content
-            icon = content_row.controls[0]
-            text = content_row.controls[1]
-            
-            if is_running:
-                self.status_bar.bgcolor = self.palette.bg_light_green
-                icon.name = AppIcons.check_circle
-                icon.color = "#34C759"
-                text.value = "Antigravity 正在后台运行中"
-                text.color = "#34C759"
-            else:
-                self.status_bar.bgcolor = self.palette.bg_light_red
-                icon.name = AppIcons.pause_circle
-                icon.color = "#FF3B30"
-                text.value = "Antigravity 服务已停止 (点击启动)"
-                text.color = "#FF3B30"
-            
-            self.update()
+            if hasattr(self, 'status_bar'):
+                if is_running:
+                    self.status_bar.bgcolor = self.palette.bg_light_green
+                    self.status_bar_icon.name = AppIcons.check_circle
+                    self.status_bar_icon.color = "#34C759"
+                    self.status_bar_text.value = self.app_state.get_text("status_running")
+                    self.status_bar_text.color = "#34C759"
+                else:
+                    self.status_bar.bgcolor = self.palette.bg_light_red
+                    self.status_bar_icon.name = AppIcons.pause_circle
+                    self.status_bar_icon.color = "#FF3B30"
+                    self.status_bar_text.value = self.app_state.get_text("status_stopped")
+                    self.status_bar_text.color = "#FF3B30"
+                
+                if self.page:
+                    self.update()
             time.sleep(2)
 
     def toggle_app_status(self, e):
@@ -338,23 +369,23 @@ class HomeView(ft.Container):
 
     def show_message(self, message, is_error=False):
         dlg = ft.CupertinoAlertDialog(
-            title=ft.Text("提示"),
+            title=ft.Text(self.app_state.get_text("notice")),
             content=ft.Text(message),
             actions=[
                 ft.CupertinoDialogAction(
-                    "确定", 
+                    self.app_state.get_text("ok"), 
                     is_destructive_action=is_error,
-                    on_click=lambda e: self.page.close(dlg)
+                    on_click=lambda e: self.main_page.close(dlg)
                 )
             ]
         )
-        self.page.open(dlg)
+        self.main_page.open(dlg)
 
     def start_app(self, e):
         if start_antigravity():
             pass
         else:
-            self.show_message("启动失败", True)
+            self.show_message(self.app_state.get_text("start_failed"), True)
 
     def stop_app(self, e):
         def close_task():
@@ -369,28 +400,29 @@ class HomeView(ft.Container):
             try:
                 if add_account_snapshot():
                     self.refresh_data()
+                    # self.show_message(self.app_state.get_text("backup_success"))
                 else:
                     pass
             except Exception as e:
                 import traceback
-                error_msg = f"备份异常: {str(e)}\n{traceback.format_exc()}"
+                error_msg = f"Backup exception: {str(e)}\n{traceback.format_exc()}"
                 from utils import error
                 error(error_msg)
-                self.show_message(f"备份错误: {str(e)}", True)
+                self.show_message(f"{self.app_state.get_text('backup_error')}: {str(e)}", True)
         threading.Thread(target=backup_task, daemon=True).start()
 
-    def show_confirm_dialog(self, title, content, on_confirm, confirm_text="确定", is_destructive=False):
+    def show_confirm_dialog(self, title, content, on_confirm, confirm_text="OK", is_destructive=False):
         def handle_confirm(e):
             on_confirm()
-            self.page.close(dlg)
+            self.main_page.close(dlg)
             
         dlg = ft.CupertinoAlertDialog(
             title=ft.Text(title),
             content=ft.Text(content),
             actions=[
                 ft.CupertinoDialogAction(
-                    "取消", 
-                    on_click=lambda e: self.page.close(dlg)
+                    self.app_state.get_text("cancel"), 
+                    on_click=lambda e: self.main_page.close(dlg)
                 ),
                 ft.CupertinoDialogAction(
                     confirm_text, 
@@ -399,23 +431,22 @@ class HomeView(ft.Container):
                 ),
             ]
         )
-        self.page.open(dlg)
+        self.main_page.open(dlg)
 
     def switch_to_account(self, account_id):
         def task():
             try:
                 if switch_account(account_id):
                     self.refresh_data()
-                    # Optional: show success message
-                    # self.show_message("切换账号成功")
+                    # self.show_message(self.app_state.get_text("switch_success"))
                 else:
-                    self.show_message("切换账号失败，请检查日志", True)
+                    self.show_message(self.app_state.get_text("switch_fail"), True)
             except Exception as e:
                 import traceback
-                error_msg = f"切换账号异常: {str(e)}\n{traceback.format_exc()}"
+                error_msg = f"Switch account exception: {str(e)}\n{traceback.format_exc()}"
                 from utils import error
                 error(error_msg)
-                self.show_message(f"发生错误: {str(e)}", True)
+                self.show_message(f"{self.app_state.get_text('switch_error')}: {str(e)}", True)
         threading.Thread(target=task, daemon=True).start()
 
     def delete_acc(self, account_id):
@@ -424,19 +455,19 @@ class HomeView(ft.Container):
                 if delete_account(account_id):
                     self.refresh_data()
                 else:
-                    self.show_message("删除账号失败，请检查日志", True)
+                    self.show_message(self.app_state.get_text("delete_failed"), True)
             except Exception as e:
                 import traceback
-                error_msg = f"删除异常: {str(e)}\n{traceback.format_exc()}"
+                error_msg = f"Delete exception: {str(e)}\n{traceback.format_exc()}"
                 from utils import error
                 error(error_msg)
-                self.show_message(f"删除错误: {str(e)}", True)
+                self.show_message(f"{self.app_state.get_text('delete_error')}: {str(e)}", True)
             self.page.update()
 
         self.show_confirm_dialog(
-            title="确认删除",
-            content="确定要删除这个账号备份吗？此操作无法撤销。",
+            title=self.app_state.get_text("confirm_delete"),
+            content=self.app_state.get_text("delete_msg"),
             on_confirm=confirm_delete,
-            confirm_text="删除",
+            confirm_text=self.app_state.get_text("delete"),
             is_destructive=True
         )
