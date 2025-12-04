@@ -9,12 +9,12 @@ import psutil
 from utils import info, error, warning, get_antigravity_executable_path, open_uri
 
 def is_process_running(process_name=None):
-    """检查 Antigravity 进程是否在运行
+    """Check if Antigravity process is running
     
-    使用跨平台的检测方式：
-    - macOS: 检查路径包含 Antigravity.app
-    - Windows: 检查进程名或路径包含 antigravity
-    - Linux: 检查进程名或路径包含 antigravity
+    Use cross-platform detection method:
+    - macOS: Check if path contains Antigravity.app
+    - Windows: Check if process name or path contains antigravity
+    - Linux: Check if process name or path contains antigravity
     """
     system = platform.system()
     
@@ -23,18 +23,18 @@ def is_process_running(process_name=None):
             process_name_lower = proc.info['name'].lower() if proc.info['name'] else ""
             exe_path = proc.info.get('exe', '').lower() if proc.info.get('exe') else ""
             
-            # 跨平台检测
+            # Cross-platform detection
             is_antigravity = False
             
             if system == "Darwin":
-                # macOS: 检查路径包含 Antigravity.app
+                # macOS: Check if path contains Antigravity.app
                 is_antigravity = 'antigravity.app' in exe_path
             elif system == "Windows":
-                # Windows: 检查进程名或路径包含 antigravity
+                # Windows: Check if process name or path contains antigravity
                 is_antigravity = (process_name_lower in ['antigravity.exe', 'antigravity'] or 
                                  'antigravity' in exe_path)
             else:
-                # Linux: 检查进程名或路径包含 antigravity
+                # Linux: Check if process name or path contains antigravity
                 is_antigravity = (process_name_lower == 'antigravity' or 
                                  'antigravity' in exe_path)
             
@@ -46,28 +46,28 @@ def is_process_running(process_name=None):
     return False
 
 def close_antigravity(timeout=10, force_kill=True):
-    """优雅地关闭所有 Antigravity 进程
+    """Gracefully close all Antigravity processes
     
-    关闭策略（三阶段，跨平台）：
-    1. 平台特定的优雅退出方式
+    Closing strategy (3 stages, cross-platform):
+    1. Platform specific graceful exit
        - macOS: AppleScript
-       - Windows: taskkill /IM (优雅终止)
+       - Windows: taskkill /IM (graceful termination)
        - Linux: SIGTERM
-    2. 温和终止 (SIGTERM/TerminateProcess) - 给进程机会清理
-    3. 强制杀死 (SIGKILL/taskkill /F) - 最后手段
+    2. Gentle termination (SIGTERM/TerminateProcess) - Give process chance to cleanup
+    3. Force kill (SIGKILL/taskkill /F) - Last resort
     """
-    info("正在尝试关闭 Antigravity...")
+    info("Attempting to close Antigravity...")
     system = platform.system()
     
     # Platform check
     if system not in ["Darwin", "Windows", "Linux"]:
-        warning(f"未知系统平台: {system}，将尝试通用方法")
+        warning(f"Unknown platform: {system}, trying generic method")
     
     try:
-        # 阶段 1: 平台特定的优雅退出
+        # Stage 1: Platform specific graceful exit
         if system == "Darwin":
-            # macOS: 使用 AppleScript
-            info("尝试通过 AppleScript 优雅退出 Antigravity...")
+            # macOS: Use AppleScript
+            info("Attempting graceful exit via AppleScript...")
             try:
                 result = subprocess.run(
                     ["osascript", "-e", 'tell application "Antigravity" to quit'],
@@ -75,14 +75,14 @@ def close_antigravity(timeout=10, force_kill=True):
                     timeout=3
                 )
                 if result.returncode == 0:
-                    info("已发送退出请求，等待应用响应...")
+                    info("Exit request sent, waiting for app response...")
                     time.sleep(2)
             except Exception as e:
-                warning(f"AppleScript 退出失败: {e}，将使用其他方式")
+                warning(f"AppleScript exit failed: {e}, trying other methods")
         
         elif system == "Windows":
-            # Windows: 使用 taskkill 优雅终止（不带 /F 参数）
-            info("尝试通过 taskkill 优雅退出 Antigravity...")
+            # Windows: Use taskkill graceful termination (without /F)
+            info("Attempting graceful exit via taskkill...")
             try:
                 # CREATE_NO_WINDOW = 0x08000000
                 startupinfo = subprocess.STARTUPINFO()
@@ -95,27 +95,27 @@ def close_antigravity(timeout=10, force_kill=True):
                     creationflags=0x08000000
                 )
                 if result.returncode == 0:
-                    info("已发送退出请求，等待应用响应...")
+                    info("Exit request sent, waiting for app response...")
                     time.sleep(2)
             except Exception as e:
-                warning(f"taskkill 退出失败: {e}，将使用其他方式")
+                warning(f"taskkill exit failed: {e}, trying other methods")
         
-        # Linux 不需要特殊处理，直接使用 SIGTERM
+        # Linux doesn't need special handling, use SIGTERM directly
         
-        # 检查并收集仍在运行的进程
+        # Check and collect still running processes
         target_processes = []
         for proc in psutil.process_iter(['pid', 'name', 'exe']):
             try:
                 process_name_lower = proc.info['name'].lower() if proc.info['name'] else ""
                 exe_path = proc.info.get('exe', '').lower() if proc.info.get('exe') else ""
                 
-                # 排除自身进程
+                # Exclude self process
                 if proc.pid == os.getpid():
                     continue
                 
-                # 排除当前应用目录下的所有进程 (防止误杀自己和子进程)
-                # 在 PyInstaller 打包环境中，sys.executable 指向 exe 文件
-                # 在开发环境中，它指向 python.exe
+                # Exclude all processes in current app directory (prevent killing self and subprocesses)
+                # In PyInstaller environment, sys.executable points to exe file
+                # In dev environment, it points to python.exe
                 try:
                     import sys
                     current_exe = sys.executable
@@ -126,40 +126,40 @@ def close_antigravity(timeout=10, force_kill=True):
                 except:
                     pass
 
-                # 跨平台检测：检查进程名或可执行文件路径
+                # Cross-platform detection: Check process name or executable path
                 is_antigravity = False
                 
                 if system == "Darwin":
-                    # macOS: 检查路径包含 Antigravity.app
+                    # macOS: Check if path contains Antigravity.app
                     is_antigravity = 'antigravity.app' in exe_path
                 elif system == "Windows":
-                    # Windows: 严格匹配进程名 antigravity.exe
-                    # 或者路径包含 antigravity 且进程名不是 Antigravity Manager.exe
+                    # Windows: Strictly match process name antigravity.exe
+                    # Or path contains antigravity and process name is not Antigravity Manager.exe
                     is_target_name = process_name_lower in ['antigravity.exe', 'antigravity']
                     is_in_path = 'antigravity' in exe_path
                     is_manager = 'manager' in process_name_lower
                     
                     is_antigravity = is_target_name or (is_in_path and not is_manager)
                 else:
-                    # Linux: 检查进程名或路径包含 antigravity
+                    # Linux: Check if process name or path contains antigravity
                     is_antigravity = (process_name_lower == 'antigravity' or 
                                      'antigravity' in exe_path)
                 
                 if is_antigravity:
-                    info(f"发现目标进程: {proc.info['name']} ({proc.pid}) - {exe_path}")
+                    info(f"Found target process: {proc.info['name']} ({proc.pid}) - {exe_path}")
                     target_processes.append(proc)
                     
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
 
         if not target_processes:
-            info("所有 Antigravity 进程已正常关闭")
+            info("All Antigravity processes closed normally")
             return True
         
-        info(f"检测到 {len(target_processes)} 个进程仍在运行")
+        info(f"Detected {len(target_processes)} processes still running")
 
-        # 阶段 2: 温和地请求进程终止 (SIGTERM)
-        info("发送终止信号 (SIGTERM)...")
+        # Stage 2: Gently request process termination (SIGTERM)
+        info("Sending termination signal (SIGTERM)...")
         for proc in target_processes:
             try:
                 if proc.is_running():
@@ -169,8 +169,8 @@ def close_antigravity(timeout=10, force_kill=True):
             except Exception as e:
                 continue
 
-        # 等待进程自然终止
-        info(f"等待进程退出（最多 {timeout} 秒）...")
+        # Waiting for process natural termination
+        info(f"Waiting for process exit (max {timeout}s)...")
         start_time = time.time()
         while time.time() - start_time < timeout:
             still_running = []
@@ -182,18 +182,18 @@ def close_antigravity(timeout=10, force_kill=True):
                     continue
             
             if not still_running:
-                info("所有 Antigravity 进程已正常关闭")
+                info("All Antigravity processes closed normally")
                 return True
                 
             time.sleep(0.5)
 
-        # 阶段 3: 强制终止顽固进程 (SIGKILL)
+        # Stage 3: Force kill stubborn processes (SIGKILL)
         if still_running:
             still_running_names = ", ".join([f"{p.info['name']}({p.pid})" for p in still_running])
-            warning(f"仍有 {len(still_running)} 个进程未退出: {still_running_names}")
+            warning(f"Still have {len(still_running)} processes running: {still_running_names}")
             
             if force_kill:
-                info("发送强制终止信号 (SIGKILL)...")
+                info("Sending force kill signal (SIGKILL)...")
                 for proc in still_running:
                     try:
                         if proc.is_running():
@@ -201,7 +201,7 @@ def close_antigravity(timeout=10, force_kill=True):
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
                 
-                # 最后检查
+                # Final check
                 time.sleep(1)
                 final_check = []
                 for proc in still_running:
@@ -212,47 +212,47 @@ def close_antigravity(timeout=10, force_kill=True):
                         continue
                 
                 if not final_check:
-                    info("所有 Antigravity 进程已被终止")
+                    info("All Antigravity processes have been terminated")
                     return True
                 else:
                     final_list = ", ".join([f"{p.info['name']}({p.pid})" for p in final_check])
-                    error(f"无法终止的进程: {final_list}")
+                    error(f"Processes unable to terminate: {final_list}")
                     return False
             else:
-                error("部分进程未能关闭，请手动关闭后重试")
+                error("Some processes failed to close, please close manually and retry")
                 return False
                 
         return True
 
     except Exception as e:
-        error(f"关闭 Antigravity 进程时发生错误: {str(e)}")
+        error(f"Error closing Antigravity process: {str(e)}")
         return False
 
 def start_antigravity(use_uri=True):
-    """启动 Antigravity
+    """Start Antigravity
     
     Args:
-        use_uri: 是否使用 URI 协议启动（默认 True）
-                 URI 协议更可靠，不需要查找可执行文件路径
+        use_uri: Whether to use URI protocol start (default True)
+                 URI protocol is more reliable, no need to find executable path
     """
-    info("正在启动 Antigravity...")
+    info("Starting Antigravity...")
     system = platform.system()
     
     try:
-        # 优先使用 URI 协议启动（跨平台通用）
+        # Prioritize URI protocol start (cross-platform)
         if use_uri:
-            info("使用 URI 协议启动...")
+            info("Starting with URI protocol...")
             uri = "antigravity://oauth-success"
             
             if open_uri(uri):
-                info("Antigravity URI 启动命令已发送")
+                info("Antigravity URI start command sent")
                 return True
             else:
-                warning("URI 启动失败，尝试使用可执行文件路径...")
-                # 继续执行下面的备用方案
+                warning("URI start failed, trying executable path...")
+                # Continue to fallback below
         
-        # 备用方案：使用可执行文件路径启动
-        info("使用可执行文件路径启动...")
+        # Fallback: Start using executable path
+        info("Starting using executable path...")
         if system == "Darwin":
             subprocess.Popen(["open", "-a", "Antigravity"])
         elif system == "Windows":
@@ -261,18 +261,18 @@ def start_antigravity(use_uri=True):
                 # CREATE_NO_WINDOW = 0x08000000
                 subprocess.Popen([str(path)], creationflags=0x08000000)
             else:
-                error("找不到 Antigravity 可执行文件")
-                warning("提示：可以尝试使用 URI 协议启动（use_uri=True）")
+                error("Antigravity executable not found")
+                warning("Tip: Try starting with URI protocol (use_uri=True)")
                 return False
         elif system == "Linux":
             subprocess.Popen(["antigravity"])
         
-        info("Antigravity 启动命令已发送")
+        info("Antigravity start command sent")
         return True
     except Exception as e:
-        error(f"启动进程时出错: {e}")
-        # 如果 URI 启动失败，尝试使用可执行文件路径
+        error(f"Error starting process: {e}")
+        # If URI start failed, try executable path
         if use_uri:
-            warning("URI 启动失败，尝试使用可执行文件路径...")
+            warning("URI start failed, trying executable path...")
             return start_antigravity(use_uri=False)
         return False
