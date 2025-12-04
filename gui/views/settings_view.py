@@ -52,124 +52,106 @@ class SettingsView(ft.Container):
                 ft.Text(self.app_state.get_text("settings"), size=28, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
                 ft.Container(height=20),
                 
-                # Full width cards for better layout
-                
-                # 1. Data Management
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Text(self.app_state.get_text("data_management"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
-                            ft.Container(height=10),
-                            ft.Container(
-                                content=ft.Column(
-                                    [
-                                        ft.Row(
-                                            [
-                                                ft.Row(
-                                                    [
-                                                        ft.Container(
-                                                            content=ft.Icon(AppIcons.folder, size=24, color=self.palette.primary),
-                                                            bgcolor=self.palette.bg_light_blue,
-                                                            padding=8,
-                                                            border_radius=8
-                                                        ),
-                                                        ft.Column(
-                                                            [
-                                                                ft.Text(self.app_state.get_text("local_data_dir"), size=15, weight=ft.FontWeight.W_600, color=self.palette.text_main),
-                                                                ft.Text(self.app_state.get_text("view_files"), size=12, color=self.palette.text_grey),
-                                                            ],
-                                                            spacing=2,
-                                                            alignment=ft.MainAxisAlignment.CENTER
-                                                        )
-                                                    ],
-                                                    spacing=15
-                                                ),
-                                                ft.Container(
-                                                    content=ft.Text(self.app_state.get_text("open_folder"), size=13, color=self.palette.primary, weight=ft.FontWeight.BOLD),
-                                                    padding=ft.padding.symmetric(horizontal=20, vertical=10),
-                                                    border_radius=8,
-                                                    bgcolor=self.palette.bg_light_blue,
-                                                    on_click=self.open_data_folder,
-                                                    alignment=ft.alignment.center
-                                                ),
-                                            ],
-                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                                        ),
-                                    ],
-                                    spacing=0,
-                                ),
-                                padding=20,
-                                bgcolor=self.palette.bg_card,
-                                border_radius=RADIUS_CARD,
-                                shadow=ft.BoxShadow(
-                                    spread_radius=0,
-                                    blur_radius=10,
-                                    color=self.palette.shadow,
-                                    offset=ft.Offset(0, 4),
-                                ),
-                            ),
-                        ],
-                        spacing=0
-                    ),
-                    width=600
-                ),
-                
+                # App Specific Settings Sections
+                self._build_app_settings(self.app_state.get_text("antigravity"), "antigravity"),
                 ft.Container(height=20),
-                
-                # 2. About
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Text(self.app_state.get_text("about"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
-                            ft.Container(height=10),
-                            ft.Container(
-                                content=ft.Column(
-                                    [
-                                        ft.Row(
-                                            [
-                                                ft.Icon(ft.Icons.INFO_OUTLINE, size=20, color=self.palette.primary),
-                                                ft.Text(self.app_state.get_text("app_title"), size=15, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
-                                            ],
-                                            spacing=10
-                                        ),
-                                        ft.Container(height=15),
-                                        ft.Row(
-                                            [
-                                                ft.Text(f"{self.app_state.get_text('author')}:", size=13, color=self.palette.text_grey, weight=ft.FontWeight.W_500),
-                                                ft.Text("Ctrler", size=13, color=self.palette.text_main),
-                                            ],
-                                            spacing=5
-                                        ),
-                                        ft.Container(height=8),
-                                        ft.Row(
-                                            [
-                                                ft.Text(f"{self.app_state.get_text('official_account')}:", size=13, color=self.palette.text_grey, weight=ft.FontWeight.W_500),
-                                                ft.Text("Ctrler", size=13, color=self.palette.text_main),
-                                            ],
-                                            spacing=5
-                                        ),
-                                    ],
-                                    spacing=0,
-                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                                ),
-                                padding=20,
-                                bgcolor=self.palette.bg_card,
-                                border_radius=RADIUS_CARD,
-                                shadow=ft.BoxShadow(
-                                    spread_radius=0,
-                                    blur_radius=10,
-                                    color=self.palette.shadow,
-                                    offset=ft.Offset(0, 4),
-                                ),
-                            ),
-                        ],
-                        spacing=0
-                    ),
-                    width=600
-                ),
+                self._build_app_settings(self.app_state.get_text("claude"), "claude"),
+                ft.Container(height=20),
+                self._build_app_settings(self.app_state.get_text("codex"), "codex"),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.START,
             scroll=ft.ScrollMode.AUTO
+        )
+
+    def _build_app_settings(self, title, app_id):
+        # Only show specific settings for Antigravity for now
+        if app_id == "antigravity":
+            content = ft.Column(
+                [
+                    ft.Text(self.app_state.get_text("data_management"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
+                    ft.Container(height=10),
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Row(
+                                    [
+                                        ft.Row(
+                                            [
+                                                ft.Container(
+                                                    content=ft.Icon(AppIcons.folder, size=24, color=self.palette.primary),
+                                                    bgcolor=self.palette.bg_light_blue,
+                                                    padding=8,
+                                                    border_radius=8
+                                                ),
+                                                ft.Column(
+                                                    [
+                                                        ft.Text(self.app_state.get_text("local_data_dir"), size=15, weight=ft.FontWeight.W_600, color=self.palette.text_main),
+                                                        ft.Text(self.app_state.get_text("view_files"), size=12, color=self.palette.text_grey),
+                                                    ],
+                                                    spacing=2,
+                                                    alignment=ft.MainAxisAlignment.CENTER
+                                                )
+                                            ],
+                                            spacing=15
+                                        ),
+                                        ft.Container(
+                                            content=ft.Text(self.app_state.get_text("open_folder"), size=13, color=self.palette.primary, weight=ft.FontWeight.BOLD),
+                                            padding=ft.padding.symmetric(horizontal=20, vertical=10),
+                                            border_radius=8,
+                                            bgcolor=self.palette.bg_light_blue,
+                                            on_click=self.open_data_folder,
+                                            alignment=ft.alignment.center
+                                        ),
+                                    ],
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                                ),
+                            ],
+                            spacing=0,
+                        ),
+                        padding=20,
+                        bgcolor=self.palette.bg_card,
+                        border_radius=RADIUS_CARD,
+                        shadow=ft.BoxShadow(
+                            spread_radius=0,
+                            blur_radius=10,
+                            color=self.palette.shadow,
+                            offset=ft.Offset(0, 4),
+                        ),
+                    ),
+                ],
+                spacing=0
+            )
+        else:
+            content = ft.Container(
+                content=ft.Text(f"{title} settings coming soon", color=self.palette.text_grey),
+                padding=20,
+                bgcolor=self.palette.bg_card,
+                border_radius=RADIUS_CARD,
+                shadow=ft.BoxShadow(
+                    spread_radius=0,
+                    blur_radius=10,
+                    color=self.palette.shadow,
+                    offset=ft.Offset(0, 4),
+                ),
+            )
+
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row([
+                        ft.Icon(
+                            AppIcons.app_antigravity if app_id == "antigravity" else (AppIcons.app_claude if app_id == "claude" else AppIcons.app_codex),
+                            size=24, 
+                            color=self.palette.text_main
+                        ),
+                        ft.Text(title, size=18, weight=ft.FontWeight.BOLD, color=self.palette.text_main)
+                    ], spacing=10),
+                    ft.Container(height=10),
+                    content
+                ],
+                spacing=0
+            ),
+            width=600
         )
 
     def on_language_change(self, e):

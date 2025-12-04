@@ -56,7 +56,29 @@ class LogsView(ft.Container):
     def rebuild_ui(self):
         self.content = ft.Column(
             [
-                ft.Text(self.app_state.get_text("logs"), size=28, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
+                ft.Row(
+                    [
+                        ft.Text(self.app_state.get_text("logs"), size=28, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
+                        ft.Dropdown(
+                            width=200,
+                            options=[
+                                ft.dropdown.Option("all", self.app_state.get_text("all_apps")),
+                                ft.dropdown.Option("antigravity", self.app_state.get_text("antigravity")),
+                                ft.dropdown.Option("claude", self.app_state.get_text("claude")),
+                                ft.dropdown.Option("codex", self.app_state.get_text("codex")),
+                            ],
+                            value="all",
+                            text_size=13,
+                            border_color=self.palette.sidebar_border,
+                            focused_border_color=self.palette.primary,
+                            content_padding=ft.padding.symmetric(horizontal=10, vertical=0),
+                            filled=True,
+                            bgcolor=self.palette.bg_card,
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER
+                ),
                 ft.Container(height=20),
                 
                 # Logs Section

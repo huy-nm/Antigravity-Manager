@@ -1,6 +1,6 @@
 # build_windows.ps1
 
-Write-Host "🚀 Starting Antigravity Manager build (Windows)..." -ForegroundColor Cyan
+Write-Host "🚀 Starting AI Tools Manager build (Windows)..." -ForegroundColor Cyan
 
 # 1. Checking environment
 if (-not (Get-Command "flet" -ErrorAction SilentlyContinue)) {
@@ -48,7 +48,7 @@ Write-Host "📦 Packaging..." -ForegroundColor Yellow
 # --add-data: Add resource files (format: source;destination)
 # --hidden-import: Force import of modules that might be missed
 pyinstaller --noconfirm --onefile --windowed --clean `
-    --name "Antigravity Manager" `
+    --name "AI Tools Manager" `
     --icon "assets/icon.ico" `
     --add-data "assets;assets" `
     --add-data "gui;gui" `
@@ -72,9 +72,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 5. Check result
-if (Test-Path "dist/Antigravity Manager.exe") {
+if (Test-Path "dist/AI Tools Manager.exe") {
     Write-Host "`n🎉 Build successful!" -ForegroundColor Green
-    Write-Host "File location: dist/Antigravity Manager.exe" -ForegroundColor Cyan
+    Write-Host "File location: dist/AI Tools Manager.exe" -ForegroundColor Cyan
 } else {
     Write-Host "❌ Generated exe file not found" -ForegroundColor Red
     exit 1

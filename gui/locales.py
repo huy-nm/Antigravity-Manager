@@ -1,6 +1,6 @@
 class Locales:
     en = {
-        "app_title": "Antigravity Manager",
+        "app_title": "AI Tools Manager",
         "dashboard": "Dashboard",
         "settings": "Settings",
         "status_checking": "Checking status...",
@@ -44,8 +44,18 @@ class Locales:
         "switch_error": "Switch error",
         "official_account": "Official Account",
         "logs": "Logs",
+        "select_app_log": "Select Application Log",
+        "all_apps": "All Applications",
+        "antigravity": "Antigravity",
+        "claude": "Claude Code",
+        "codex": "Codex",
+        "general": "General",
+        "app_settings": "Application Settings",
+        "about": "About",
+        "author": "Author",
+        "app_title": "AI Tools Manager",
     }
-    
+
     vi = {
         "app_title": "Quản lý Antigravity",
         "dashboard": "Bảng điều khiển",
@@ -91,6 +101,15 @@ class Locales:
         "switch_error": "Lỗi chuyển đổi",
         "official_account": "Tài khoản chính thức",
         "logs": "Nhật ký",
+        "select_app_log": "Chọn nhật ký ứng dụng",
+        "all_apps": "Tất cả ứng dụng",
+        "antigravity": "Antigravity",
+        "claude": "Claude Code",
+        "codex": "Codex",
+        "general": "Chung",
+        "app_settings": "Cài đặt ứng dụng",
+        "about": "Giới thiệu",
+        "author": "Tác giả",
     }
 
     ja = {
@@ -138,14 +157,19 @@ class Locales:
         "switch_error": "切り替えエラー",
         "official_account": "公式アカウント",
         "logs": "ログ",
+        "select_app_log": "アプリログを選択",
+        "all_apps": "すべてのアプリ",
+        "antigravity": "Antigravity",
+        "claude": "Claude Code",
+        "codex": "Codex",
+        "general": "一般",
+        "app_settings": "アプリ設定",
+        "about": "アプリについて",
+        "author": "作者",
     }
 
     @staticmethod
     def get_text(lang_code, key):
-        lang_map = {
-            "en": Locales.en,
-            "vi": Locales.vi,
-            "ja": Locales.ja
-        }
+        lang_map = {"en": Locales.en, "vi": Locales.vi, "ja": Locales.ja}
         # Default to English if lang not found, or key not found in lang
         return lang_map.get(lang_code, Locales.en).get(key, Locales.en.get(key, key))

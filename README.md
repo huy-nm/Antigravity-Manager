@@ -159,4 +159,4 @@ A: Single-file exes packaged with PyInstaller are occasionally false-flagged. Th
 
 This project is licensed under the MIT License. Issues and Pull Requests are welcome.
 
-Copyright (c) 2025 Ctrler. All rights reserved.
+Copyright (c) 2025. All rights reserved.

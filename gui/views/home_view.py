@@ -72,93 +72,154 @@ class HomeView(ft.Container):
         pass
 
     def rebuild_content(self):
-        # Status Bar Elements
-        self.status_bar_text = ft.Text(self.app_state.get_text("status_checking"), size=13, weight=ft.FontWeight.W_500, color=self.palette.primary)
-        self.status_bar_icon = ft.Icon(AppIcons.info, size=16, color=self.palette.primary)
-        
-        self.status_bar = ft.Container(
-            content=ft.Row(
+        # App Switching Tabs
+        tabs = ft.Tabs(
+            selected_index=["antigravity", "claude", "codex"].index(self.app_state.selected_app),
+            animation_duration=300,
+            tabs=[
+                ft.Tab(
+                    text=self.app_state.get_text("antigravity"),
+                    icon=AppIcons.app_antigravity,
+                ),
+                ft.Tab(
+                    text=self.app_state.get_text("claude"),
+                    icon=AppIcons.app_claude,
+                ),
+                ft.Tab(
+                    text=self.app_state.get_text("codex"),
+                    icon=AppIcons.app_codex,
+                ),
+            ],
+            on_change=self.on_tab_change,
+        )
+
+        # Dashboard Content based on selected app
+        if self.app_state.selected_app != "antigravity":
+            dashboard_content = ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Icon(AppIcons.info, size=64, color=self.palette.text_grey),
+                        ft.Text("Coming Soon", size=20, weight=ft.FontWeight.BOLD, color=self.palette.text_main),
+                        ft.Text(f"Support for {self.app_state.selected_app} is under development.", size=14, color=self.palette.text_grey),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                ),
+                alignment=ft.alignment.center,
+                expand=True,
+                padding=40
+            )
+        else:
+            # Status Bar Elements
+            self.status_bar_text = ft.Text(self.app_state.get_text("status_checking"), size=13, weight=ft.FontWeight.W_500, color=self.palette.primary)
+            self.status_bar_icon = ft.Icon(AppIcons.info, size=16, color=self.palette.primary)
+            
+            self.status_bar = ft.Container(
+                content=ft.Row(
+                    [
+                        self.status_bar_icon,
+                        self.status_bar_text
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER
+                ),
+                bgcolor=self.palette.bg_light_blue,
+                padding=ft.padding.symmetric(vertical=8, horizontal=15),
+                border_radius=8,
+                animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT),
+                on_click=self.toggle_app_status
+            )
+            
+            # List Header Elements
+            self.list_title = ft.Text(self.app_state.get_text("account_list"), size=18, weight=ft.FontWeight.BOLD, color=self.palette.text_main)
+            self.stats_badge_text = ft.Text("0", size=12, color=self.palette.primary, weight=ft.FontWeight.BOLD)
+            self.stats_badge = ft.Container(
+                content=self.stats_badge_text,
+                bgcolor=self.palette.bg_light_blue,
+                padding=ft.padding.symmetric(horizontal=8, vertical=2),
+                border_radius=10,
+            )
+            
+            if not hasattr(self, 'accounts_list'):
+                self.accounts_list = ft.Column(spacing=12, scroll=ft.ScrollMode.HIDDEN)
+
+            dashboard_content = ft.Column(
                 [
-                    self.status_bar_icon,
-                    self.status_bar_text
+                    # 1. Status Notification Bar
+                    self.status_bar,
+                    
+                    ft.Container(height=20),
+                    
+                    # 2. List Header with Integrated Stats
+                    ft.Row(
+                        [
+                            ft.Row(
+                                [
+                                    self.list_title,
+                                    self.stats_badge
+                                ],
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=8
+                            ),
+                            ft.Container(
+                                content=ft.Row(
+                                    [
+                                        ft.Icon(AppIcons.add, size=14, color="#FFFFFF"), # Always white on primary
+                                        ft.Text(self.app_state.get_text("backup_current"), size=13, color="#FFFFFF", weight=ft.FontWeight.W_600)
+                                    ],
+                                    spacing=4,
+                                    alignment=ft.MainAxisAlignment.CENTER
+                                ),
+                                bgcolor=self.palette.primary,
+                                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                                border_radius=8,
+                                on_click=self.backup_current,
+                                shadow=ft.BoxShadow(
+                                    spread_radius=0,
+                                    blur_radius=8,
+                                    color=ft.Colors.with_opacity(0.4, self.palette.primary),
+                                    offset=ft.Offset(0, 2),
+                                )
+                            )
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER
+                    ),
+                    
+                    ft.Container(height=15),
+
+                    # 3. Account List Container
+                    ft.Container(
+                        content=self.accounts_list,
+                        expand=True, # Take up remaining space
+                    )
                 ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER
-            ),
-            bgcolor=self.palette.bg_light_blue,
-            padding=ft.padding.symmetric(vertical=8, horizontal=15),
-            border_radius=8,
-            animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT),
-            on_click=self.toggle_app_status
-        )
-        
-        # List Header Elements
-        self.list_title = ft.Text(self.app_state.get_text("account_list"), size=18, weight=ft.FontWeight.BOLD, color=self.palette.text_main)
-        self.stats_badge_text = ft.Text("0", size=12, color=self.palette.primary, weight=ft.FontWeight.BOLD)
-        self.stats_badge = ft.Container(
-            content=self.stats_badge_text,
-            bgcolor=self.palette.bg_light_blue,
-            padding=ft.padding.symmetric(horizontal=8, vertical=2),
-            border_radius=10,
-        )
-        
-        # Re-initialize accounts list container if needed, but keep reference if possible?
-        # Actually better to just clear it in refresh_data
-        if not hasattr(self, 'accounts_list'):
-            self.accounts_list = ft.Column(spacing=12, scroll=ft.ScrollMode.HIDDEN)
+                expand=True
+            )
 
         self.content = ft.Column(
             [
-                # 1. Status Notification Bar
-                self.status_bar,
-                
-                ft.Container(height=20),
-                
-                # 2. List Header with Integrated Stats
-                ft.Row(
-                    [
-                        ft.Row(
-                            [
-                                self.list_title,
-                                self.stats_badge
-                            ],
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=8
-                        ),
-                        ft.Container(
-                            content=ft.Row(
-                                [
-                                    ft.Icon(AppIcons.add, size=14, color="#FFFFFF"), # Always white on primary
-                                    ft.Text(self.app_state.get_text("backup_current"), size=13, color="#FFFFFF", weight=ft.FontWeight.W_600)
-                                ],
-                                spacing=4,
-                                alignment=ft.MainAxisAlignment.CENTER
-                            ),
-                            bgcolor=self.palette.primary,
-                            padding=ft.padding.symmetric(horizontal=16, vertical=8),
-                            border_radius=8,
-                            on_click=self.backup_current,
-                            shadow=ft.BoxShadow(
-                                spread_radius=0,
-                                blur_radius=8,
-                                color=ft.Colors.with_opacity(0.4, self.palette.primary),
-                                offset=ft.Offset(0, 2),
-                            )
-                        )
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER
-                ),
-                
-                ft.Container(height=15),
-
-                # 3. Account List Container
+                tabs,
+                ft.Container(height=10),
                 ft.Container(
-                    content=self.accounts_list,
-                    expand=True, # Take up remaining space
+                    content=dashboard_content,
+                    expand=True
                 )
             ],
+            expand=True
         )
+
+    def on_tab_change(self, e):
+        index = e.control.selected_index
+        apps = ["antigravity", "claude", "codex"]
+        if 0 <= index < len(apps):
+            new_app = apps[index]
+            self.app_state.set_app(new_app)
+            # Since set_app triggers refresh_app in main.py, and refresh_app calls rebuild_content,
+            # we don't strictly need to do anything here, but main.py might only refresh if app CHANGED.
+            # But set_app checks for change. So it should be fine.
+            # However, calling set_app will trigger on_refresh which calls home_view.rebuild_content()
+            pass
 
     def refresh_data(self):
         # Refresh current email

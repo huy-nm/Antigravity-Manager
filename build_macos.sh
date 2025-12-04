@@ -3,7 +3,7 @@
 # Exit on error
 set -e
 
-echo "🚀 Starting Antigravity Manager build (macOS)..."
+echo "🚀 Starting AI Tools Manager build (macOS)..."
 
 # 1. Sync resource files
 echo "📦 Syncing resource files..."
@@ -31,9 +31,9 @@ unset PYTHONINSPECT
 
 # Use python -c to call flet_cli directly, bypassing possible entry point issues, and redirect input
 python -c "import sys; from flet.cli import main; main()" build macos \
-    --product "Antigravity Manager" \
+    --product "AI Tools Manager" \
     --org "com.ctrler.antigravity" \
-    --copyright "Copyright (c) 2025 Ctrler" \
+    --copyright "" \
     --build-version "1.0.0" \
     --desc "Antigravity Account Manager" < /dev/null
 EXIT_CODE=$?
@@ -43,7 +43,7 @@ set -e
 cd ..
 
 # 4. Check build artifacts and package DMG
-APP_NAME="Antigravity Manager"
+APP_NAME="AI Tools Manager"
 APP_PATH="gui/build/macos/$APP_NAME.app"
 DMG_NAME="$APP_NAME.dmg"
 OUTPUT_DMG="gui/build/macos/$DMG_NAME"

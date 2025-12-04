@@ -6,6 +6,7 @@ from pathlib import Path
 from views.home_view import HomeView
 from views.settings_view import SettingsView
 from views.logs_view import LogsView
+from views.about_view import AboutView
 from theme import get_palette
 from icons import AppIcons
 from locales import Locales
@@ -17,6 +18,7 @@ class AppState:
         self.on_refresh = on_refresh
         self.settings = load_settings()
         self.lang = self.settings.get("language", "en")
+        self.selected_app = "antigravity"
         
     def get_text(self, key):
         return Locales.get_text(self.lang, key)
@@ -26,6 +28,12 @@ class AppState:
             self.lang = lang_code
             self.settings["language"] = lang_code
             save_settings(self.settings)
+            if self.on_refresh:
+                self.on_refresh()
+
+    def set_app(self, app_id):
+        if self.selected_app != app_id:
+            self.selected_app = app_id
             if self.on_refresh:
                 self.on_refresh()
 
@@ -123,6 +131,7 @@ class Sidebar(ft.Container):
             {"icon": AppIcons.dashboard, "label": self.app_state.get_text("dashboard")},
             {"icon": AppIcons.settings, "label": self.app_state.get_text("settings")},
             {"icon": AppIcons.logs, "label": self.app_state.get_text("logs")},
+            {"icon": ft.Icons.INFO_OUTLINE, "label": self.app_state.get_text("about")},
         ]
         
         menu_items = []
@@ -137,10 +146,18 @@ class Sidebar(ft.Container):
                 )
             )
         
+        # Update title based on selected app
+        app_names = {
+            "antigravity": "Antigravity",
+            "claude": "Claude Code",
+            "codex": "Codex"
+        }
+        app_title = app_names.get(self.app_state.selected_app, "Manager")
+        
         self.content = ft.Column(
             [
                 ft.Container(
-                    content=ft.Text("Antigravity", size=12, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
+                    content=ft.Text(app_title, size=12, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
                     padding=ft.padding.only(left=10, bottom=10)
                 ),
                 lang_selector,
@@ -177,15 +194,22 @@ def main(page: ft.Page):
     home_view = None
     settings_view = None
     logs_view = None
+    about_view = None
     sidebar = None
     
     def refresh_app():
         """Callback to refresh all components when language changes"""
-        nonlocal home_view, settings_view, logs_view, sidebar
-        if home_view: home_view.update_locale()
+        nonlocal home_view, settings_view, logs_view, about_view, sidebar
+        if home_view: 
+            home_view.update_locale()
+            # Force rebuild content if app changed
+            home_view.rebuild_content()
         if settings_view: settings_view.update_locale()
         if logs_view: logs_view.update_locale()
+        if about_view: about_view.update_locale()
         if sidebar: sidebar.refresh_locale()
+        
+        # Update page title if needed
         page.title = app_state.get_text("app_title")
         page.update()
 
@@ -210,11 +234,13 @@ def main(page: ft.Page):
     home_view = HomeView(page, app_state)
     settings_view = SettingsView(page, app_state)
     logs_view = LogsView(page, app_state)
+    about_view = AboutView(page, app_state)
     
     views = {
         0: home_view,
         1: settings_view,
-        2: logs_view
+        2: logs_view,
+        3: about_view
     }
 
     content_area = ft.Container(
@@ -250,6 +276,7 @@ def main(page: ft.Page):
         home_view.update_theme()
         settings_view.update_theme()
         logs_view.update_theme()
+        about_view.update_theme()
         
         page.update()
 
