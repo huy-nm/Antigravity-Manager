@@ -348,6 +348,22 @@ class HomeView(ft.Container):
                                         vertical_alignment=ft.CrossAxisAlignment.CENTER
                                     ),
                                     ft.Text(acc['email'], size=12, color=self.palette.text_grey),
+                                    # Usage Status (Claude only)
+                                    ft.Container(
+                                        content=ft.Row(
+                                            [
+                                                ft.Icon(ft.Icons.CREDIT_CARD, size=10, color=self.palette.text_grey),
+                                                ft.Text(
+                                                    f"{self.app_state.get_text('usage_status')}: {self.app_state.get_text('billing_type_' + acc.get('billing_type', 'none'))}",
+                                                    size=11, 
+                                                    color=self.palette.text_grey
+                                                )
+                                            ],
+                                            spacing=4,
+                                            vertical_alignment=ft.CrossAxisAlignment.CENTER
+                                        ),
+                                        visible=(self.app_state.selected_app == "claude" and "billing_type" in acc)
+                                    )
                                 ],
                                 spacing=2,
                                 alignment=ft.MainAxisAlignment.CENTER
@@ -384,7 +400,8 @@ class HomeView(ft.Container):
                                         icon=ft.Icons.SWAP_HORIZ,
                                         icon_color=self.palette.primary,
                                         tooltip=self.app_state.get_text("switch_to"),
-                                        on_click=lambda e: self.switch_to_account(acc['id'])
+                                        on_click=lambda e: self.switch_to_account(acc['id']),
+                                        visible=not is_current
                                     ),
                                     ft.IconButton(
                                         icon=AppIcons.delete,

@@ -223,12 +223,26 @@ def list_accounts_data():
         result = []
         
         for acc_num, acc_data in accounts_map.items():
+            email = acc_data.get("email")
+            billing_type = "none"
+            
+            # Try to read config from backup to get billing details
+            config_file = BACKUP_DIR / "configs" / f".claude-config-{acc_num}-{email}.json"
+            if config_file.exists():
+                try:
+                    with open(config_file, 'r', encoding='utf-8') as cf:
+                        config_data = json.load(cf)
+                        billing_type = config_data.get("oauthAccount", {}).get("organizationBillingType", "none")
+                except:
+                    pass
+
             result.append({
                 "id": str(acc_num),
                 "name": f"Account {acc_num}",
-                "email": acc_data.get("email"),
+                "email": email,
                 "last_used": acc_data.get("added"), # Using 'added' as last interaction time proxy
-                "real_id": str(acc_num) # Keep track of the sequence number
+                "real_id": str(acc_num), # Keep track of the sequence number
+                "billing_type": billing_type
             })
             
         # Sort by ID
