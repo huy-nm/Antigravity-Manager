@@ -2,8 +2,9 @@ import flet as ft
 import threading
 import time
 from datetime import datetime
-from process_manager import is_process_running, start_antigravity, close_antigravity
-from account_manager import add_account_snapshot, list_accounts_data, switch_account, delete_account
+from process_manager import is_process_running, start_antigravity, close_antigravity, is_claude_running, close_claude
+from account_manager import add_account_snapshot as add_ag_snapshot, list_accounts_data as list_ag_data, switch_account as switch_ag, delete_account as delete_ag
+from claude_manager import add_account_snapshot as add_cc_snapshot, list_accounts_data as list_cc_data, switch_account as switch_cc, delete_account as delete_cc
 from db_manager import get_current_account_info
 from theme import get_palette
 from icons import AppIcons
@@ -46,8 +47,12 @@ class HomeView(ft.Container):
         def task():
             # Delay slightly to ensure UI is loaded
             time.sleep(1)
-            if add_account_snapshot():
-                self.refresh_data()
+            if self.app_state.selected_app == "antigravity":
+                if add_ag_snapshot():
+                    self.refresh_data()
+            elif self.app_state.selected_app == "claude":
+                if add_cc_snapshot():
+                    self.refresh_data()
         threading.Thread(target=task, daemon=True).start()
 
     def will_unmount(self):
@@ -94,7 +99,7 @@ class HomeView(ft.Container):
         )
 
         # Dashboard Content based on selected app
-        if self.app_state.selected_app != "antigravity":
+        if self.app_state.selected_app == "codex":
             dashboard_content = ft.Container(
                 content=ft.Column(
                     [
@@ -223,17 +228,25 @@ class HomeView(ft.Container):
 
     def refresh_data(self):
         # Refresh current email
-        info = get_current_account_info()
-        if info and "email" in info:
-            self.current_email = info["email"]
+        self.current_email = None
+        accounts = []
+        
+        if self.app_state.selected_app == "antigravity":
+            info = get_current_account_info()
+            if info and "email" in info:
+                self.current_email = info["email"]
+            accounts = list_ag_data()
+        elif self.app_state.selected_app == "claude":
+            # We need a way to get current email for claude. 
+            # claude_manager.get_current_account_email is not exported, let me fix import or logic
+            from claude_manager import get_current_account_email
+            self.current_email = get_current_account_email()
+            accounts = list_cc_data()
             
         # Refresh accounts list
         self.accounts_list.controls.clear()
-        accounts = list_accounts_data()
         
         # Update stats badge
-        # We need to handle pluralization if strict, but simple concatenation is fine here
-        # Or just use the count
         self.stats_badge_text.value = f"{len(accounts)}"
         
         if not accounts:
@@ -395,38 +408,59 @@ class HomeView(ft.Container):
     def on_card_hover(self, e):
         # Only show shadow hover effect in light mode or if shadow is visible
         if self.palette.shadow != "#00000000":
+            if not e.control.page:
+                return
             e.control.shadow.blur_radius = 15 if e.data == "true" else 10
             e.control.shadow.offset = ft.Offset(0, 6) if e.data == "true" else ft.Offset(0, 2)
             e.control.update()
 
     def monitor_status(self):
         while self.running:
-            is_running = is_process_running()
+            is_running = False
+            app_name = "App"
+            
+            if self.app_state.selected_app == "antigravity":
+                is_running = is_process_running()
+                app_name = "Antigravity"
+            elif self.app_state.selected_app == "claude":
+                is_running = is_claude_running()
+                app_name = "Claude Code"
             
             # Update Status Bar
-            if hasattr(self, 'status_bar'):
-                if is_running:
-                    self.status_bar.bgcolor = self.palette.bg_light_green
-                    self.status_bar_icon.name = AppIcons.check_circle
-                    self.status_bar_icon.color = "#34C759"
-                    self.status_bar_text.value = self.app_state.get_text("status_running")
-                    self.status_bar_text.color = "#34C759"
-                else:
-                    self.status_bar.bgcolor = self.palette.bg_light_red
-                    self.status_bar_icon.name = AppIcons.pause_circle
-                    self.status_bar_icon.color = "#FF3B30"
-                    self.status_bar_text.value = self.app_state.get_text("status_stopped")
-                    self.status_bar_text.color = "#FF3B30"
-                
-                if self.page:
+            if hasattr(self, 'status_bar') and self.page:
+                try:
+                    if is_running:
+                        self.status_bar.bgcolor = self.palette.bg_light_green
+                        self.status_bar_icon.name = AppIcons.check_circle
+                        self.status_bar_icon.color = "#34C759"
+                        # We might want to parameterize the status string too
+                        self.status_bar_text.value = f"{app_name} is running"
+                        self.status_bar_text.color = "#34C759"
+                    else:
+                        self.status_bar.bgcolor = self.palette.bg_light_red
+                        self.status_bar_icon.name = AppIcons.pause_circle
+                        self.status_bar_icon.color = "#FF3B30"
+                        self.status_bar_text.value = f"{app_name} stopped (Click to start)"
+                        self.status_bar_text.color = "#FF3B30"
+                    
                     self.update()
+                except Exception:
+                    # Avoid crashing the thread if update fails
+                    pass
             time.sleep(2)
 
     def toggle_app_status(self, e):
-        if is_process_running():
-            self.stop_app(e)
-        else:
-            self.start_app(e)
+        if self.app_state.selected_app == "antigravity":
+            if is_process_running():
+                self.stop_app(e)
+            else:
+                self.start_app(e)
+        elif self.app_state.selected_app == "claude":
+            if is_claude_running():
+                self.stop_app(e)
+            else:
+                # Starting claude code is likely via terminal, so maybe just show message
+                self.show_message("Please start Claude Code from your terminal.")
 
     def show_message(self, message, is_error=False):
         dlg = ft.CupertinoAlertDialog(
@@ -443,25 +477,31 @@ class HomeView(ft.Container):
         self.main_page.open(dlg)
 
     def start_app(self, e):
-        if start_antigravity():
-            pass
-        else:
-            self.show_message(self.app_state.get_text("start_failed"), True)
+        if self.app_state.selected_app == "antigravity":
+            if start_antigravity():
+                pass
+            else:
+                self.show_message(self.app_state.get_text("start_failed"), True)
 
     def stop_app(self, e):
         def close_task():
-            if close_antigravity():
-                pass
-            else:
-                pass
+            if self.app_state.selected_app == "antigravity":
+                close_antigravity()
+            elif self.app_state.selected_app == "claude":
+                close_claude()
         threading.Thread(target=close_task, daemon=True).start()
 
     def backup_current(self, e):
         def backup_task():
             try:
-                if add_account_snapshot():
+                success = False
+                if self.app_state.selected_app == "antigravity":
+                    success = add_ag_snapshot()
+                elif self.app_state.selected_app == "claude":
+                    success = add_cc_snapshot()
+                
+                if success:
                     self.refresh_data()
-                    # self.show_message(self.app_state.get_text("backup_success"))
                 else:
                     pass
             except Exception as e:
@@ -497,9 +537,14 @@ class HomeView(ft.Container):
     def switch_to_account(self, account_id):
         def task():
             try:
-                if switch_account(account_id):
+                success = False
+                if self.app_state.selected_app == "antigravity":
+                    success = switch_ag(account_id)
+                elif self.app_state.selected_app == "claude":
+                    success = switch_cc(account_id)
+                    
+                if success:
                     self.refresh_data()
-                    # self.show_message(self.app_state.get_text("switch_success"))
                 else:
                     self.show_message(self.app_state.get_text("switch_fail"), True)
             except Exception as e:
@@ -513,7 +558,13 @@ class HomeView(ft.Container):
     def delete_acc(self, account_id):
         def confirm_delete():
             try:
-                if delete_account(account_id):
+                success = False
+                if self.app_state.selected_app == "antigravity":
+                    success = delete_ag(account_id)
+                elif self.app_state.selected_app == "claude":
+                    success = delete_cc(account_id)
+                    
+                if success:
                     self.refresh_data()
                 else:
                     self.show_message(self.app_state.get_text("delete_failed"), True)

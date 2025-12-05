@@ -153,6 +153,7 @@ class Locales:
         "start_failed": "起動に失敗しました",
         "backup_error": "バックアップエラー",
         "delete_failed": "削除に失敗しました",
+        "delete_success": "削除成功",
         "delete_error": "削除エラー",
         "switch_error": "切り替えエラー",
         "official_account": "公式アカウント",

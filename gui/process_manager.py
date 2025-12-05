@@ -252,6 +252,74 @@ def close_antigravity(timeout=10, force_kill=True):
         return False
 
 
+def is_claude_running():
+    """Check if Claude Code process is running"""
+    for proc in psutil.process_iter(["name", "cmdline"]):
+        try:
+            name = proc.info["name"].lower() if proc.info["name"] else ""
+            cmdline = proc.info.get("cmdline", [])
+            cmdline_str = " ".join(cmdline).lower() if cmdline else ""
+
+            # Look for claude in name or command line
+            # Exclude the manager itself
+            if ("claude" in name or "claude" in cmdline_str) and "antigravity" not in name and "manager" not in cmdline_str:
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    return False
+
+
+def close_claude(timeout=10):
+    """Gracefully close Claude Code processes"""
+    info("Attempting to close Claude Code...")
+    
+    target_processes = []
+    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+        try:
+            name = proc.info["name"].lower() if proc.info["name"] else ""
+            cmdline = proc.info.get("cmdline", [])
+            cmdline_str = " ".join(cmdline).lower() if cmdline else ""
+
+            if ("claude" in name or "claude" in cmdline_str) and "antigravity" not in name and "manager" not in cmdline_str:
+                target_processes.append(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+    if not target_processes:
+        info("No Claude Code processes found")
+        return True
+
+    # Send SIGTERM
+    for proc in target_processes:
+        try:
+            proc.terminate()
+        except:
+            pass
+
+    # Wait for exit
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        still_running = False
+        for proc in target_processes:
+            if proc.is_running():
+                still_running = True
+                break
+        if not still_running:
+            info("Claude Code processes closed")
+            return True
+        time.sleep(0.5)
+
+    # Force kill if needed
+    for proc in target_processes:
+        try:
+            if proc.is_running():
+                proc.kill()
+        except:
+            pass
+            
+    return True
+
+
 def start_antigravity(use_uri=True):
     """Start Antigravity
 
