@@ -158,37 +158,49 @@ class HomeView(ft.Container):
                     # 2. List Header with Integrated Stats
                     ft.Row(
                         [
-                            ft.Row(
-                                [
-                                    self.list_title,
-                                    self.stats_badge
-                                ],
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                spacing=8
-                            ),
                             ft.Container(
                                 content=ft.Row(
                                     [
-                                        ft.Icon(AppIcons.add, size=14, color="#FFFFFF"), # Always white on primary
-                                        ft.Text(self.app_state.get_text("backup_current"), size=13, color="#FFFFFF", weight=ft.FontWeight.W_600)
+                                        self.list_title,
+                                        self.stats_badge
                                     ],
-                                    spacing=4,
-                                    alignment=ft.MainAxisAlignment.CENTER
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                    spacing=8
                                 ),
-                                bgcolor=self.palette.primary,
-                                padding=ft.padding.symmetric(horizontal=16, vertical=8),
-                                border_radius=8,
-                                on_click=self.backup_current,
-                                shadow=ft.BoxShadow(
-                                    spread_radius=0,
-                                    blur_radius=8,
-                                    color=ft.Colors.with_opacity(0.4, self.palette.primary),
-                                    offset=ft.Offset(0, 2),
-                                )
+                                padding=ft.padding.only(top=8)
+                            ),
+                            ft.Column(
+                                [
+                                    ft.Container(
+                                        content=ft.Row(
+                                            [
+                                                ft.Icon(AppIcons.add, size=16, color="#FFFFFF"),
+                                                ft.Text(self.app_state.get_text("import_account"), size=14, color="#FFFFFF", weight=ft.FontWeight.W_600)
+                                            ],
+                                            spacing=6,
+                                            alignment=ft.MainAxisAlignment.CENTER
+                                        ),
+                                        bgcolor=self.palette.primary,
+                                        padding=ft.padding.symmetric(horizontal=16, vertical=10),
+                                        border_radius=10,
+                                        on_click=self.import_account,
+                                        shadow=ft.BoxShadow(
+                                            spread_radius=0,
+                                            blur_radius=8,
+                                            color=ft.Colors.with_opacity(0.4, self.palette.primary),
+                                            offset=ft.Offset(0, 2),
+                                        ),
+                                        animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
+                                        on_hover=self.on_card_hover
+                                    ),
+                                    ft.Text(self.app_state.get_text("save_session_subtext"), size=11, color=self.palette.text_grey, weight=ft.FontWeight.W_500, text_align=ft.TextAlign.RIGHT)
+                                ],
+                                spacing=4,
+                                horizontal_alignment=ft.CrossAxisAlignment.END
                             )
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER
+                        vertical_alignment=ft.CrossAxisAlignment.START
                     ),
                     
                     ft.Container(height=15),
@@ -491,7 +503,7 @@ class HomeView(ft.Container):
                 close_claude()
         threading.Thread(target=close_task, daemon=True).start()
 
-    def backup_current(self, e):
+    def import_account(self, e):
         def backup_task():
             try:
                 success = False
@@ -506,10 +518,10 @@ class HomeView(ft.Container):
                     pass
             except Exception as e:
                 import traceback
-                error_msg = f"Backup exception: {str(e)}\n{traceback.format_exc()}"
+                error_msg = f"Import exception: {str(e)}\n{traceback.format_exc()}"
                 from utils import error
                 error(error_msg)
-                self.show_message(f"{self.app_state.get_text('backup_error')}: {str(e)}", True)
+                self.show_message(f"{self.app_state.get_text('import_error')}: {str(e)}", True)
         threading.Thread(target=backup_task, daemon=True).start()
 
     def show_confirm_dialog(self, title, content, on_confirm, confirm_text="OK", is_destructive=False):

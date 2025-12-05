@@ -289,14 +289,7 @@ class SettingsView(ft.Container):
             spacing=0
         )
 
-    def _on_backup_click(self, e):
-        success = claude_manager.add_account_snapshot()
-        if success:
-            self.show_snack(self.app_state.get_text("backup_success"))
-        else:
-            self.show_snack(self.app_state.get_text("backup_fail"))
-        self.rebuild_ui()
-        self.update()
+
 
     def _on_switch_click(self, e, account_id):
         success = claude_manager.switch_account(account_id)
