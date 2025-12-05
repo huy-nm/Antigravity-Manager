@@ -203,7 +203,7 @@ def main(page: ft.Page):
         if home_view: 
             home_view.update_locale()
             # Force rebuild content if app changed
-            home_view.rebuild_content()
+            # home_view.rebuild_content() -> Removed because update_locale already calls it and refresh_data, calling it again resets data
         if settings_view: settings_view.update_locale()
         if logs_view: logs_view.update_locale()
         if about_view: about_view.update_locale()

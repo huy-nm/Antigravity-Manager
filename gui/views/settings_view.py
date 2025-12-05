@@ -160,125 +160,121 @@ class SettingsView(ft.Container):
     def _build_claude_content(self):
         current_email = claude_manager.get_current_account_email()
         accounts = claude_manager.list_accounts_data()
+        claude_config_path = claude_manager.get_claude_config_path()
         
-        # Current Account Section
-        current_account_card = ft.Container(
-            content=ft.Row(
+        # Config File Location
+        config_file_card = ft.Container(
+            content=ft.Column(
                 [
-                    ft.Row(
-                        [
-                            ft.Container(
-                                content=ft.Icon(ft.Icons.ACCOUNT_CIRCLE, size=24, color=self.palette.primary),
-                                bgcolor=self.palette.bg_light_blue,
-                                padding=8,
-                                border_radius=8
-                            ),
-                            ft.Column(
-                                [
-                                    ft.Text(self.app_state.get_text("current"), size=15, weight=ft.FontWeight.W_600, color=self.palette.text_main),
-                                    ft.Text(current_email if current_email else "Not logged in", size=12, color=self.palette.text_grey),
-                                ],
-                                spacing=2,
-                                alignment=ft.MainAxisAlignment.CENTER
-                            )
-                        ],
-                        spacing=15
-                    ),
+                    ft.Text(self.app_state.get_text("config_location"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
+                    ft.Container(height=10),
                     ft.Container(
-                        content=ft.Text(self.app_state.get_text("backup_current"), size=13, color=self.palette.primary, weight=ft.FontWeight.BOLD),
-                        padding=ft.padding.symmetric(horizontal=20, vertical=10),
-                        border_radius=8,
-                        bgcolor=self.palette.bg_light_blue,
-                        on_click=self._on_backup_click,
-                        alignment=ft.alignment.center
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-            ),
-            padding=20,
-            bgcolor=self.palette.bg_card,
-            border_radius=RADIUS_CARD,
-            shadow=ft.BoxShadow(
-                spread_radius=0,
-                blur_radius=10,
-                color=self.palette.shadow,
-                offset=ft.Offset(0, 4),
-            ),
-        )
-
-        # Managed Accounts List
-        account_rows = []
-        if not accounts:
-            account_rows.append(
-                ft.Container(
-                    content=ft.Text(self.app_state.get_text("no_backups"), color=self.palette.text_grey, italic=True),
-                    alignment=ft.alignment.center,
-                    padding=20
-                )
-            )
-        else:
-            for acc in accounts:
-                is_current = current_email and acc.get("email") == current_email
-                
-                account_rows.append(
-                    ft.Container(
-                        content=ft.Row(
+                        content=ft.Column(
                             [
                                 ft.Row(
                                     [
-                                        ft.Icon(ft.Icons.SUPERVISED_USER_CIRCLE_OUTLINED, color=self.palette.text_grey),
-                                        ft.Column(
+                                        ft.Row(
                                             [
-                                                ft.Text(f"{acc.get('name')} ({acc.get('email')})", weight=ft.FontWeight.BOLD, color=self.palette.text_main),
-                                                ft.Text(f"{self.app_state.get_text('last_used')}: {acc.get('last_used')}", size=12, color=self.palette.text_grey),
+                                                ft.Container(
+                                                    content=ft.Icon(ft.Icons.SETTINGS, size=24, color=self.palette.primary),
+                                                    bgcolor=self.palette.bg_light_blue,
+                                                    padding=8,
+                                                    border_radius=8
+                                                ),
+                                                ft.Column(
+                                                    [
+                                                        ft.Text("config.json", size=15, weight=ft.FontWeight.W_600, color=self.palette.text_main),
+                                                        ft.Text(str(claude_config_path), size=12, color=self.palette.text_grey, overflow=ft.TextOverflow.ELLIPSIS),
+                                                    ],
+                                                    spacing=2,
+                                                    alignment=ft.MainAxisAlignment.CENTER
+                                                )
                                             ],
-                                            spacing=2
+                                            spacing=15
+                                        ),
+                                        ft.Container(
+                                            content=ft.Text(self.app_state.get_text("open_file"), size=13, color=self.palette.primary, weight=ft.FontWeight.BOLD),
+                                            padding=ft.padding.symmetric(horizontal=20, vertical=10),
+                                            border_radius=8,
+                                            bgcolor=self.palette.bg_light_blue,
+                                            on_click=lambda _: self.open_file(str(claude_config_path)),
+                                            alignment=ft.alignment.center
                                         ),
                                     ],
-                                    expand=True
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
                                 ),
-                                ft.Row(
-                                    [
-                                        ft.IconButton(
-                                            icon=ft.Icons.SWAP_HORIZ,
-                                            tooltip=self.app_state.get_text("switch_to"),
-                                            icon_color=self.palette.primary,
-                                            disabled=is_current,
-                                            on_click=lambda e, id=acc.get("real_id"): self._on_switch_click(e, id)
-                                        ),
-                                        ft.IconButton(
-                                            icon=ft.Icons.DELETE_OUTLINE,
-                                            tooltip=self.app_state.get_text("delete_backup"),
-                                            icon_color=ft.Colors.RED_400,
-                                            on_click=lambda e, id=acc.get("real_id"): self._on_delete_click(e, id)
-                                        ),
-                                    ]
-                                )
                             ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                            spacing=0,
                         ),
-                        padding=10,
-                        border=ft.border.only(bottom=ft.BorderSide(1, self.palette.sidebar_border))
-                    )
-                )
-
-        accounts_list = ft.Container(
-            content=ft.Column(
-                [
-                    ft.Text(self.app_state.get_text("account_list"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
-                    ft.Container(height=10),
-                    ft.Container(
-                        content=ft.Column(account_rows, spacing=0),
+                        padding=20,
                         bgcolor=self.palette.bg_card,
                         border_radius=RADIUS_CARD,
-                        padding=10,
                         shadow=ft.BoxShadow(
                             spread_radius=0,
                             blur_radius=10,
                             color=self.palette.shadow,
                             offset=ft.Offset(0, 4),
                         ),
-                    )
+                    ),
+                ],
+                spacing=0
+            )
+        )
+        
+        # Profiles Directory Location
+        profiles_dir_card = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(self.app_state.get_text("profiles_location"), size=13, weight=ft.FontWeight.BOLD, color=self.palette.text_grey),
+                    ft.Container(height=10),
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Row(
+                                    [
+                                        ft.Row(
+                                            [
+                                                ft.Container(
+                                                    content=ft.Icon(ft.Icons.FOLDER, size=24, color=self.palette.primary),
+                                                    bgcolor=self.palette.bg_light_blue,
+                                                    padding=8,
+                                                    border_radius=8
+                                                ),
+                                                ft.Column(
+                                                    [
+                                                        ft.Text(str(claude_manager.BACKUP_DIR.name), size=15, weight=ft.FontWeight.W_600, color=self.palette.text_main),
+                                                        ft.Text(str(claude_manager.BACKUP_DIR), size=12, color=self.palette.text_grey, overflow=ft.TextOverflow.ELLIPSIS),
+                                                    ],
+                                                    spacing=2,
+                                                    alignment=ft.MainAxisAlignment.CENTER
+                                                )
+                                            ],
+                                            spacing=15
+                                        ),
+                                        ft.Container(
+                                            content=ft.Text(self.app_state.get_text("open_folder"), size=13, color=self.palette.primary, weight=ft.FontWeight.BOLD),
+                                            padding=ft.padding.symmetric(horizontal=20, vertical=10),
+                                            border_radius=8,
+                                            bgcolor=self.palette.bg_light_blue,
+                                            on_click=lambda _: self.open_file(str(claude_manager.BACKUP_DIR)),
+                                            alignment=ft.alignment.center
+                                        ),
+                                    ],
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                                ),
+                            ],
+                            spacing=0,
+                        ),
+                        padding=20,
+                        bgcolor=self.palette.bg_card,
+                        border_radius=RADIUS_CARD,
+                        shadow=ft.BoxShadow(
+                            spread_radius=0,
+                            blur_radius=10,
+                            color=self.palette.shadow,
+                            offset=ft.Offset(0, 4),
+                        ),
+                    ),
                 ],
                 spacing=0
             )
@@ -286,9 +282,9 @@ class SettingsView(ft.Container):
 
         return ft.Column(
             [
-                current_account_card,
+                config_file_card,
                 ft.Container(height=20),
-                accounts_list
+                profiles_dir_card
             ],
             spacing=0
         )
@@ -351,6 +347,30 @@ class SettingsView(ft.Container):
         # Moved to Sidebar
         pass
 
+    def open_file(self, path_to_open):
+        if not os.path.exists(path_to_open):
+             return
+        
+        path_to_open = os.path.normpath(path_to_open)
+        
+        # If it's a file, we might want to open parent folder or the file itself
+        # The request says "location or whatever file... check it locally". 
+        # Opening the file in default editor or showing in folder is best.
+        # Let's try to reveal in finder/explorer first if possible, otherwise open.
+        
+        if platform.system() == "Darwin":
+            subprocess.run(["open", "-R", path_to_open]) # -R reveals in Finder
+        elif platform.system() == "Windows":
+            try:
+                subprocess.run(f'explorer /select,"{path_to_open}"')
+            except Exception as e:
+                print(f"Failed to open folder: {e}")
+        else:
+            # Linux usually xdg-open opens the file if it's a file. To reveal is desktop env specific.
+            # Fallback to opening the parent directory
+            parent = os.path.dirname(path_to_open)
+            subprocess.run(["xdg-open", parent])
+
     def open_data_folder(self, e):
         path_to_open = os.path.expanduser("~/.antigravity-agent")
         if not os.path.exists(path_to_open):
@@ -362,7 +382,7 @@ class SettingsView(ft.Container):
             subprocess.run(["open", path_to_open])
         elif platform.system() == "Windows":
             try:
-                os.startfile(path_to_open)
+                subprocess.run(["explorer", path_to_open])
             except Exception as e:
                 print(f"Failed to open folder: {e}")
         else:
